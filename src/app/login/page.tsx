@@ -6,8 +6,8 @@ import { setToken, loginUser } from '@/lib/api';
 import { LoginResponse } from '@/types/login';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('admin@plaidnox.com');
-  const [password, setPassword] = useState('Password@1');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [token, setTokenInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
