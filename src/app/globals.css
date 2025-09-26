@@ -1,0 +1,250 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --background: #111113;
+  --foreground: #dbdccb;
+  --card: #111113;
+  --card-foreground: #dbdccb;
+  --popover: #111113;
+  --popover-foreground: #dbdccb;
+  --primary: #e6344e;
+  --primary-foreground: #dbdccb;
+  --secondary: #c9c9c9;
+  --secondary-foreground: #a6461e;
+  --muted: #c9c9c9;
+  --muted-foreground: #a6461e;
+  --accent: #d6702e;
+  --accent-foreground: #dbdccb;
+  --destructive: #e6344e;
+  --destructive-foreground: #dbdccb;
+  --border: #c9c9c9;
+  --input: #1a1a1c;
+  --ring: #a6461e;
+  --chart-1: #e6344e;
+  --chart-2: #d6702e;
+  --chart-3: #a6461e;
+  --chart-4: #c9c9c9;
+  --chart-5: #dbdccb;
+  --sidebar: #111113;
+  --sidebar-foreground: #dbdccb;
+  --sidebar-primary: #e6344e;
+  --sidebar-primary-foreground: #dbdccb;
+  --sidebar-accent: #d6702e;
+  --sidebar-accent-foreground: #a6461e;
+  --sidebar-border: #c9c9c9;
+  --sidebar-ring: #e6344e;
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Inter', sans-serif;
+  --font-mono: Menlo, monospace;
+  --radius: 0.4rem;
+  --shadow: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 1px 2px -1px hsl(9, 75%, 61% / 0.00);
+  --spacing: 0.25rem;
+  --shadow-lg: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 4px 6px -1px hsl(9, 75%, 61% / 0.00);
+  --shadow-md: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 2px 4px -1px hsl(9, 75%, 61% / 0.00);
+  --shadow-sm: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 1px 2px -1px hsl(9, 75%, 61% / 0.00);
+  --shadow-xl: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00), 0px 8px 10px -1px hsl(9, 75%, 61% / 0.00);
+  --shadow-xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
+  --shadow-2xl: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
+  --shadow-2xs: 0px 2px 0px 0px hsl(9, 75%, 61% / 0.00);
+  --tracking-normal: 0em;
+
+  /* Icon System Design Tokens */
+  --icon-on-card: #dbdccb;
+  --icon-on-card-opacity: 0.95;
+  --icon-accent: #e6344e;
+  --icon-subtle: #c9c9c9;
+  --icon-subtle-opacity: 0.70;
+  --icon-hover-accent: #d6702e;
+  --icon-container-bg: #111113;
+  --icon-container-bg-opacity: 0.1;
+  --icon-stroke-width: 1.5;
+  --icon-padding: 12%;
+
+  /* Icon Size Tokens */
+  --icon-xs: 16px;
+  --icon-sm: 20px;
+  --icon-md: 24px;
+  --icon-lg: 32px;
+  --icon-xl: 40px;
+
+  /* Icon Container Size Tokens */
+  --icon-container-sm: 32px;
+  --icon-container-md: 48px;
+  --icon-container-lg: 56px;
+  --icon-container-xl: 72px;
+
+  /* Icon Spacing Tokens */
+  --icon-spacing-to-text: 16px;
+  --icon-hover-scale: 1.05;
+  --icon-transition-duration: 200ms;
+  --icon-transition-timing: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+.dark {
+  --background: #111113;
+  --foreground: #dbdccb;
+  --card: #111113;
+  --card-foreground: #dbdccb;
+  --popover: #111113;
+  --popover-foreground: #dbdccb;
+  --primary: #e6344e;
+  --primary-foreground: #dbdccb;
+  --secondary: #a6461e;
+  --secondary-foreground: #dbdccb;
+  --muted: #a6461e;
+  --muted-foreground: #dbdccb;
+  --accent: #d6702e;
+  --accent-foreground: #dbdccb;
+  --destructive: #e6344e;
+  --destructive-foreground: #dbdccb;
+  --border: #a6461e;
+  --input: #1a1a1c;
+  --ring: #d6702e;
+  --sidebar: #111113;
+  --sidebar-foreground: #dbdccb;
+  --sidebar-primary: #e6344e;
+  --sidebar-primary-foreground: #dbdccb;
+  --sidebar-accent: #d6702e;
+  --sidebar-accent-foreground: #a6461e;
+  --sidebar-border: #c9c9c9;
+  --sidebar-ring: #e6344e;
+  --chart-1: #e6344e;
+  --chart-2: #d6702e;
+  --chart-3: #a6461e;
+  --chart-4: #c9c9c9;
+  --chart-5: #dbdccb;
+}
+
+@theme inline {
+  /* Update font variables to use Inter via next/font variable */
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-mono);
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * { @apply border-border outline-ring/50; }
+  body { @apply bg-background text-foreground font-sans antialiased; }
+}
+
+/* Enhanced scrollbar styling utilities with better visibility and smooth scrolling */
+.scrollbar-thin {
+  scrollbar-width: thin;
+}
+
+.scrollbar-track-sidebar {
+  /* thumb color then track color */
+  scrollbar-color: #c9c9c9 #111113;
+}
+
+.scrollbar-thumb-primary {
+  /* thumb color then track color */
+  scrollbar-color: #c9c9c9 #111113;
+}
+
+.hover\:scrollbar-thumb-secondary:hover {
+  /* keep hover same tone for simplicity */
+  scrollbar-color: #c9c9c9 #111113;
+}
+
+/* Webkit scrollbar styling for better cross-browser support */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-track-sidebar::-webkit-scrollbar-track {
+  background: #111113;
+  border-radius: 4px;
+}
+
+.scrollbar-thumb-primary::-webkit-scrollbar-thumb {
+  background: #c9c9c9;
+  border-radius: 4px;
+  border: 1px solid #111113;
+}
+
+.hover\:scrollbar-thumb-secondary:hover::-webkit-scrollbar-thumb {
+  background: #c9c9c9;
+}
+
+/* Smooth scrolling and global scrollbar defaults for all elements */
+* {
+  scroll-behavior: smooth;
+  scrollbar-width: thin;
+  scrollbar-color: #c9c9c9 #111113;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: #111113;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #c9c9c9;
+  border-radius: 4px;
+  border: 1px solid #111113;
+}
+
+/* Show styled scrollbars inside Radix Scroll Area viewport */
+[data-radix-scroll-area-viewport] {
+  scrollbar-width: thin;
+  -ms-overflow-style: auto;
+  -webkit-overflow-scrolling: touch;
+}
+[data-radix-scroll-area-viewport]::-webkit-scrollbar {
+  display: initial;
+}
+
+/* Utility: hide scrollbar where horizontal overflow used for compact metrics */
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
