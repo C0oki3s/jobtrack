@@ -2,6 +2,15 @@
 
 import { ApiError } from '../types/auth';
 import { LoginResponse } from '../types/login';
+import {
+  AdminOrganizationListResponse,
+  FileListResponse,
+  FileUploadResponse,
+  FileDeleteResponse,
+  UploadFileParams,
+  AdminSearchParams,
+  FileType
+} from '../types/admin';
 
 const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'auth_token';
@@ -135,17 +144,105 @@ export async function getOrganizations(page: number = 1, limit: number = 10, org
     page: page.toString(),
     limit: limit.toString(),
   });
-  
+
   if (org) {
     searchParams.append('org', org);
   }
-  
+
   if (sync) {
     searchParams.append('sync', 'true');
   }
-  
+
   const url = `/job-tracker/?${searchParams.toString()}`;
   return apiFetch(url);
+}
+
+// Admin API functions
+export async function getAdminOrganizations(params: AdminSearchParams = {}): Promise<AdminOrganizationListResponse> {
+  const searchParams = new URLSearchParams();
+  
+  if (params.page) searchParams.append('page', params.page.toString());
+  if (params.limit) searchParams.append('limit', params.limit.toString());
+  if (params.search) searchParams.append('search', params.search);
+
+  const url = `/admin/orgs${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  return apiFetch<AdminOrganizationListResponse>(url);
+}
+
+export async function uploadOrgFile(
+  orgId: string, 
+  type: 'report' | 'tracker', 
+  params: UploadFileParams
+): Promise<FileUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', params.file);
+  
+  if (params.version) {
+    formData.append('version', params.version.toString());
+  }
+  
+  if (params.metadata) {
+    formData.append('metadata', JSON.stringify(params.metadata));
+  }
+
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) {
+    const scheme = AUTH_SCHEME.trim();
+    headers.Authorization = `${scheme} ${token}`.trim();
+  }
+
+  const res = await fetch(`${BASE_URL}/admin/${orgId}/${type}`, {
+    method: 'POST',
+    headers,
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errorBody = await res.json().catch(() => ({ error: res.statusText }));
+    const error: ApiError = {
+      status: res.status,
+      message: errorBody.error || res.statusText,
+    };
+    throw error;
+  }
+
+  return res.json();
+}
+
+export async function getOrgFiles(
+  orgId: string, 
+  params?: { type?: FileType; project?: string }
+): Promise<FileListResponse> {
+  const searchParams = new URLSearchParams();
+  
+  if (params?.type && params.type !== 'all') {
+    searchParams.append('type', params.type);
+  }
+  
+  if (params?.project) {
+    searchParams.append('project', params.project);
+  }
+
+  const url = `/admin/${orgId}/files${searchParams.toString() ? `?${searchParams.toString()}` : ''}`;
+  return apiFetch<FileListResponse>(url);
+}
+
+export async function getOrgReports(orgId: string): Promise<FileListResponse> {
+  return apiFetch<FileListResponse>(`/admin/${orgId}/report`);
+}
+
+export async function getOrgTrackers(orgId: string): Promise<FileListResponse> {
+  return apiFetch<FileListResponse>(`/admin/${orgId}/tracker`);
+}
+
+export async function deleteOrgFile(
+  orgId: string, 
+  fileId: string
+): Promise<FileDeleteResponse> {
+  return apiFetch<FileDeleteResponse>(`/admin/${orgId}/files/${fileId}`, {
+    method: 'DELETE',
+  });
 }
 
 export { TOKEN_KEY, BASE_URL, AUTH_SCHEME, DOMAIN_STORAGE_KEY, ORG_STORAGE_KEY };
