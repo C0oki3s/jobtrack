@@ -15,7 +15,7 @@ export interface AdminOrganizationListResponse {
 
 export interface OrgFile {
   id: string;
-  type: 'report' | 'tracker';
+  type: 'report' | 'tracker' | 'poc';
   version: number;
   projectKey?: string;
   project?: {
@@ -53,6 +53,26 @@ export interface FileUploadResponse {
   };
 }
 
+// Tracker upload may return a different shape with optional POCS summary
+export interface TrackerUploadResponse {
+  success: boolean;
+  tracker: {
+    id: string;
+    key: string;
+    url: string;
+    type: 'tracker';
+    version: number;
+    fileName: string;
+    size: number;
+    mimeType: string;
+  };
+  pocs?: {
+    count: number;
+    items: Array<{ key: string; size: number; mimeType: string }>;
+    projectKey?: string;
+  } | null;
+}
+
 export interface FileDeleteResponse {
   success: boolean;
   deleted: {
@@ -66,6 +86,8 @@ export interface FileDeleteResponse {
 
 export interface UploadFileParams {
   file: File;
+  // Optional POCS zip file when uploading a tracker
+  pocs?: File;
   version?: number;
   metadata?: Record<string, unknown>;
 }
@@ -76,7 +98,7 @@ export interface FileUploadProgress {
   percentage: number;
 }
 
-export type FileType = 'report' | 'tracker' | 'all';
+export type FileType = 'report' | 'tracker' | 'poc' | 'all';
 
 export interface AdminSearchParams {
   page?: number;

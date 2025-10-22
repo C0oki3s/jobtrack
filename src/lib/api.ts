@@ -6,13 +6,14 @@ import {
   AdminOrganizationListResponse,
   FileListResponse,
   FileUploadResponse,
+  TrackerUploadResponse,
   FileDeleteResponse,
   UploadFileParams,
   AdminSearchParams,
   FileType
 } from '../types/admin';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://veta-api.plaidnox.com';
 const TOKEN_KEY = 'auth_token';
 const DOMAIN_STORAGE_KEY = 'selected_domain';
 const ORG_STORAGE_KEY = 'selected_org';
@@ -173,9 +174,13 @@ export async function uploadOrgFile(
   orgId: string, 
   type: 'report' | 'tracker', 
   params: UploadFileParams
-): Promise<FileUploadResponse> {
+): Promise<FileUploadResponse | TrackerUploadResponse> {
   const formData = new FormData();
   formData.append('file', params.file);
+  // Optional POCS zip when uploading tracker
+  if (type === 'tracker' && params.pocs) {
+    formData.append('pocs', params.pocs);
+  }
   
   if (params.version) {
     formData.append('version', params.version.toString());

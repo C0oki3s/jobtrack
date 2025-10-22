@@ -29,6 +29,7 @@ export default function AdminPage() {
   const [selectedProject, setSelectedProject] = useState<string>('');
   const [availableProjects, setAvailableProjects] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [pocView, setPocView] = useState<'gallery' | 'tree'>('tree');
   
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -72,14 +73,17 @@ export default function AdminPage() {
 
   const handleOrgSelect = useCallback(async (org: AdminOrganization) => {
     setSelectedOrg(org);
-    await fetchOrgFiles(org._id, { type: fileType });
+    // For POCs tab, fetch 'all' so tracker entries also appear in the tree
+    const typeToFetch: FileType = fileType === 'poc' ? 'all' : fileType;
+    await fetchOrgFiles(org._id, { type: typeToFetch });
   }, [fetchOrgFiles, fileType]);
 
   const handleFileTypeChange = useCallback(async (type: FileType) => {
     setFileType(type);
     if (selectedOrg) {
+      const typeToFetch: FileType = type === 'poc' ? 'all' : type;
       await fetchOrgFiles(selectedOrg._id, { 
-        type, 
+        type: typeToFetch, 
         project: selectedProject || undefined 
       });
     }
@@ -88,8 +92,9 @@ export default function AdminPage() {
   const handleProjectChange = useCallback(async (projectKey: string) => {
     setSelectedProject(projectKey);
     if (selectedOrg) {
+      const typeToFetch: FileType = fileType === 'poc' ? 'all' : fileType;
       await fetchOrgFiles(selectedOrg._id, { 
-        type: fileType, 
+        type: typeToFetch, 
         project: projectKey || undefined 
       });
     }
@@ -98,23 +103,28 @@ export default function AdminPage() {
   const handleFileUpload = useCallback(async (
     files: FileList, 
     type: 'report' | 'tracker',
-    metadata?: FileMetadata
+    metadata?: FileMetadata,
+    pocs?: File
   ) => {
     if (!selectedOrg || !files.length) return;
 
     setUploading(true);
     try {
-      const uploadPromises = Array.from(files).map(file => {
+      const filesArr = Array.from(files);
+      const uploadPromises = filesArr.map((file, index) => {
         const params: UploadFileParams = { 
           file,
-          metadata: metadata && Object.values(metadata).some(v => v.trim()) ? metadata : undefined
+          metadata: metadata && Object.values(metadata).some(v => v.trim()) ? metadata : undefined,
+          // Only attach POCS once (with the first tracker upload)
+          ...(type === 'tracker' && index === 0 && pocs ? { pocs } : {}),
         };
         return uploadOrgFile(selectedOrg._id, type, params);
       });
 
       await Promise.all(uploadPromises);
+      const typeToFetch: FileType = fileType === 'poc' ? 'all' : fileType;
       await fetchOrgFiles(selectedOrg._id, { 
-        type: fileType, 
+        type: typeToFetch, 
         project: selectedProject || undefined 
       });
     } catch (err) {
@@ -130,8 +140,9 @@ export default function AdminPage() {
 
     try {
       await deleteOrgFile(selectedOrg._id, fileId);
+      const typeToFetch: FileType = fileType === 'poc' ? 'all' : fileType;
       await fetchOrgFiles(selectedOrg._id, { 
-        type: fileType, 
+        type: typeToFetch, 
         project: selectedProject || undefined 
       });
     } catch (err) {
@@ -325,7 +336,7 @@ export default function AdminPage() {
                     />
                     <FileUploadDropzone
                       type="tracker"
-                      onUpload={(files: FileList, metadata?: FileMetadata) => handleFileUpload(files, 'tracker', metadata)}
+                      onUpload={(files: FileList, metadata?: FileMetadata, pocs?: File) => handleFileUpload(files, 'tracker', metadata, pocs)}
                       uploading={uploading}
                     />
                   </div>
@@ -368,6 +379,16 @@ export default function AdminPage() {
                         >
                           Trackers ({orgFiles.filter(f => f.type === 'tracker').length})
                         </button>
+                        <button
+                          onClick={() => handleFileTypeChange('poc')}
+                          className={`px-3 py-1 rounded text-sm transition-colors ${
+                            fileType === 'poc'
+                              ? 'bg-primary text-primary-foreground'
+                              : 'bg-secondary text-secondary-foreground hover:bg-secondary/90'
+                          }`}
+                        >
+                          POCs ({orgFiles.filter(f => f.type === 'poc').length})
+                        </button>
                       </div>
                       
                       {/* Project Filter */}
@@ -386,13 +407,40 @@ export default function AdminPage() {
                           </select>
                         </div>
                       )}
+                      {fileType === 'poc' && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">View:</span>
+                          <div className="inline-flex rounded-md overflow-hidden border border-border">
+                            <button
+                              onClick={() => setPocView('tree')}
+                              className={`px-3 py-1 text-sm ${pocView === 'tree' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/90'}`}
+                            >
+                              Tree
+                            </button>
+                            <button
+                              onClick={() => setPocView('gallery')}
+                              className={`px-3 py-1 text-sm ${pocView === 'gallery' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground hover:bg-secondary/90'}`}
+                            >
+                              Gallery
+                            </button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
-                  <FileListComponent 
-                    files={orgFiles}
-                    onDelete={handleFileDelete}
-                  />
+                  {fileType === 'poc' ? (
+                    pocView === 'gallery' ? (
+                      <POCGallery files={orgFiles.filter(f => f.type === 'poc')} onDelete={handleFileDelete} />
+                    ) : (
+                      <POCSTree files={orgFiles.filter(f => f.type === 'poc' || f.type === 'tracker')} orgId={selectedOrg._id} onDelete={handleFileDelete} />
+                    )
+                  ) : (
+                    <FileListComponent 
+                      files={orgFiles}
+                      onDelete={handleFileDelete}
+                    />
+                  )}
                 </div>
               </>
             ) : (
@@ -425,7 +473,7 @@ interface FileMetadata extends Record<string, string> {
 // File Upload Dropzone Component
 interface FileUploadDropzoneProps {
   type: 'report' | 'tracker';
-  onUpload: (files: FileList, metadata?: FileMetadata) => void;
+  onUpload: (files: FileList, metadata?: FileMetadata, pocs?: File) => void;
   uploading: boolean;
 }
 
@@ -433,6 +481,7 @@ function FileUploadDropzone({ type, onUpload, uploading }: FileUploadDropzonePro
   const [isDragOver, setIsDragOver] = useState(false);
   const [showMetadataForm, setShowMetadataForm] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [pocsFile, setPocsFile] = useState<File | null>(null);
   const [metadata, setMetadata] = useState<FileMetadata>({
     projectSummary: '',
     projectName: '',
@@ -445,6 +494,7 @@ function FileUploadDropzone({ type, onUpload, uploading }: FileUploadDropzonePro
   const resetForm = () => {
     setSelectedFiles(null);
     setShowMetadataForm(false);
+    setPocsFile(null);
     setMetadata({
       projectSummary: '',
       projectName: '',
@@ -508,14 +558,14 @@ function FileUploadDropzone({ type, onUpload, uploading }: FileUploadDropzonePro
 
   const handleUploadWithMetadata = () => {
     if (selectedFiles) {
-      onUpload(selectedFiles, metadata);
+      onUpload(selectedFiles, metadata, pocsFile || undefined);
       resetForm();
     }
   };
 
   const handleSkipMetadata = () => {
     if (selectedFiles) {
-      onUpload(selectedFiles);
+      onUpload(selectedFiles, undefined, pocsFile || undefined);
       resetForm();
     }
   };
@@ -541,6 +591,36 @@ function FileUploadDropzone({ type, onUpload, uploading }: FileUploadDropzonePro
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   Files will be organized under this project folder in storage
+                </div>
+              </div>
+            )}
+
+            {type === 'tracker' && (
+              <div className="p-3 bg-muted/30 rounded border">
+                <label className="block text-xs font-medium text-muted-foreground mb-1">
+                  POCS Zip (optional)
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="file"
+                    accept=".zip,application/zip,application/x-zip-compressed"
+                    onChange={(e) => setPocsFile(e.target.files && e.target.files[0] ? e.target.files[0] : null)}
+                    className="hidden"
+                    id={`pocs-${type}`}
+                    disabled={uploading}
+                  />
+                  <label
+                    htmlFor={`pocs-${type}`}
+                    className="inline-block bg-secondary text-secondary-foreground px-3 py-1 rounded-md cursor-pointer hover:bg-secondary/90 text-xs"
+                  >
+                    {pocsFile ? 'Change Zip' : 'Choose Zip'}
+                  </label>
+                  <span className="text-xs text-muted-foreground truncate">
+                    {pocsFile ? pocsFile.name : 'No file selected'}
+                  </span>
+                </div>
+                <div className="text-[11px] text-muted-foreground mt-1">
+                  If provided, this zip will be uploaded alongside the tracker and organized under the same project.
                 </div>
               </div>
             )}
@@ -751,7 +831,7 @@ function FileListComponent({ files, onDelete }: FileListProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm">
-                {file.type === 'report' ? '📊' : '📋'}
+                {file.type === 'report' ? '📊' : file.type === 'tracker' ? '📋' : '🧪'}
               </span>
               <span className="font-medium text-sm">{file.fileName}</span>
               <span className="text-xs bg-accent/20 text-accent px-2 py-1 rounded">
@@ -795,6 +875,261 @@ function FileListComponent({ files, onDelete }: FileListProps) {
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// POC Gallery Component
+interface POCGalleryProps {
+  files: OrgFile[];
+  onDelete: (fileId: string) => void;
+}
+
+function POCGallery({ files, onDelete }: POCGalleryProps) {
+  // Group POC files by projectKey (or 'Ungrouped')
+  const groups = files.reduce<Record<string, OrgFile[]>>((acc, f) => {
+    const key = f.projectKey || 'Ungrouped';
+    acc[key] = acc[key] || [];
+    acc[key].push(f);
+    return acc;
+  }, {});
+
+  const isImage = (mime: string) => mime?.startsWith('image/');
+  const formatFileSize = (bytes: number) => {
+    if (!bytes && bytes !== 0) return '';
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
+  const groupEntries = Object.entries(groups).sort((a, b) => a[0].localeCompare(b[0]));
+
+  if (groupEntries.length === 0) {
+    return (
+      <div className="text-center py-8 text-muted-foreground">No POCs found</div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {groupEntries.map(([projectKey, groupFiles]) => {
+        const first = groupFiles[0];
+        const project = first.project;
+        return (
+          <div key={projectKey} className="border border-border rounded-lg bg-card">
+            <div className="px-4 py-3 border-b border-border flex items-center justify-between">
+              <div className="text-sm">
+                <div className="font-semibold flex items-center gap-2">
+                  <span>Project</span>
+                  <span className="px-2 py-0.5 text-xs rounded bg-primary/20 text-primary">
+                    {project?.name || projectKey}
+                  </span>
+                </div>
+                <div className="text-muted-foreground text-xs mt-0.5">
+                  {project?.date && <span className="mr-2">Date: {project.date}</span>}
+                  {project?.type && <span>Type: {project.type}</span>}
+                  {!project && projectKey !== 'Ungrouped' && (
+                    <span className="ml-2">Key: {projectKey}</span>
+                  )}
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground">{groupFiles.length} item(s)</div>
+            </div>
+
+            <div className="p-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+              {groupFiles.map((file) => (
+                <div key={file.id} className="bg-background rounded-md border border-border overflow-hidden flex flex-col">
+                  <a href={file.url} target="_blank" rel="noopener noreferrer" className="block group">
+                    <div className="aspect-video bg-muted flex items-center justify-center overflow-hidden">
+                      {isImage(file.mimeType) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={file.url}
+                          alt={file.fileName}
+                          loading="lazy"
+                          className="w-full h-full object-cover transition-transform group-hover:scale-[1.02]"
+                        />
+                      ) : (
+                        <div className="text-3xl">📄</div>
+                      )}
+                    </div>
+                  </a>
+                  <div className="p-2 text-xs flex-1 flex flex-col gap-1">
+                    <div className="font-medium truncate" title={file.fileName}>{file.fileName}</div>
+                    <div className="text-muted-foreground">
+                      {formatFileSize(file.size)} • {file.mimeType}
+                    </div>
+                    <div className="mt-auto flex items-center justify-between gap-2 pt-1">
+                      <a
+                        href={file.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90"
+                      >
+                        View
+                      </a>
+                      <button
+                        onClick={() => onDelete(file.id)}
+                        className="px-2 py-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+// POC + Tracker Tree Component
+interface POCSTreeProps {
+  files: OrgFile[]; // Expect mixture of 'poc' and 'tracker' files
+  orgId: string;
+  onDelete: (fileId: string) => void;
+}
+
+function POCSTree({ files, orgId, onDelete }: POCSTreeProps) {
+  // Split into tracker and POCS by inspecting s3 key path
+  const rel = (key: string) => key.startsWith(`${orgId}/`) ? key.slice(orgId.length + 1) : key;
+
+  // Tracker grouping: tracker/<projectKey>/vX/<filename>
+  const tracker = files.filter(f => f.type === 'tracker').reduce<Record<string, Record<string, OrgFile[]>>>((acc, f) => {
+    const parts = rel(f.key).split('/');
+    if (parts[0] !== 'tracker') return acc;
+    const projectKey = parts[1] || '(unknown)';
+    const versionFolder = parts[2] || '(v?)';
+    acc[projectKey] = acc[projectKey] || {};
+    acc[projectKey][versionFolder] = acc[projectKey][versionFolder] || [];
+    acc[projectKey][versionFolder].push(f);
+    return acc;
+  }, {});
+
+  // POCS grouping: POCS/<projectKey>/(optional folder)/file
+  type PocsGroup = Record<string, { root: OrgFile[]; folders: Record<string, OrgFile[]> }>;
+  const pocs: PocsGroup = files.filter(f => f.type === 'poc').reduce<PocsGroup>((acc, f) => {
+    const parts = rel(f.key).split('/');
+    if (parts[0] !== 'POCS') return acc;
+    const projectKey = parts[1] || '(unknown)';
+    const sub = parts.slice(2);
+    if (!acc[projectKey]) acc[projectKey] = { root: [], folders: {} };
+    if (sub.length <= 1) {
+      acc[projectKey].root.push(f);
+    } else {
+      const folder = sub[0];
+      acc[projectKey].folders[folder] = acc[projectKey].folders[folder] || [];
+      acc[projectKey].folders[folder].push(f);
+    }
+    return acc;
+  }, {});
+
+  const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
+    <div className="border border-border rounded-lg overflow-hidden">
+      <div className="px-4 py-2 bg-muted/40 border-b border-border font-medium text-sm">{title}</div>
+      <div className="p-3">{children}</div>
+    </div>
+  );
+
+  const FileRow: React.FC<{ file: OrgFile }> = ({ file }) => (
+    <div className="flex items-center justify-between p-2 bg-background rounded border border-border">
+      <div className="text-xs truncate mr-2" title={file.key}>
+        {file.key.replace(`${orgId}/`, '')}
+      </div>
+      <div className="flex items-center gap-2">
+        <a
+          href={file.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="px-2 py-1 rounded bg-primary text-primary-foreground hover:bg-primary/90 text-xs"
+        >
+          View
+        </a>
+        <button
+          onClick={() => onDelete(file.id)}
+          className="px-2 py-1 rounded bg-destructive text-destructive-foreground hover:bg-destructive/90 text-xs"
+        >
+          Delete
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderTracker = () => {
+    const projects = Object.keys(tracker).sort();
+    if (projects.length === 0) return <div className="text-xs text-muted-foreground">No tracker files</div>;
+    return (
+      <div className="space-y-3">
+        {projects.map(pk => {
+          const versions = Object.keys(tracker[pk]).sort();
+          return (
+            <details key={pk} open className="rounded border border-border">
+              <summary className="cursor-pointer select-none px-3 py-2 text-sm bg-card/60">{pk}</summary>
+              <div className="p-3 space-y-2">
+                {versions.map(v => (
+                  <details key={v} open className="rounded border border-border">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground">{v}</summary>
+                    <div className="p-2 space-y-2">
+                      {tracker[pk][v].map(f => (
+                        <FileRow key={f.id} file={f} />
+                      ))}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
+
+  const renderPocs = () => {
+    const projects = Object.keys(pocs).sort();
+    if (projects.length === 0) return <div className="text-xs text-muted-foreground">No POCs</div>;
+    return (
+      <div className="space-y-3">
+        {projects.map(pk => {
+          const group = pocs[pk];
+          const folders = Object.keys(group.folders).sort();
+          const hasRoot = group.root.length > 0;
+          return (
+            <details key={pk} open className="rounded border border-border">
+              <summary className="cursor-pointer select-none px-3 py-2 text-sm bg-card/60">{pk}</summary>
+              <div className="p-3 space-y-3">
+                {hasRoot && (
+                  <div>
+                    <div className="text-xs text-muted-foreground mb-1">(root)</div>
+                    <div className="space-y-2">
+                      {group.root.map(f => <FileRow key={f.id} file={f} />)}
+                    </div>
+                  </div>
+                )}
+                {folders.map(folder => (
+                  <details key={folder} open className="rounded border border-border">
+                    <summary className="cursor-pointer select-none px-3 py-2 text-xs">{folder}</summary>
+                    <div className="p-2 space-y-2">
+                      {group.folders[folder].map(f => <FileRow key={f.id} file={f} />)}
+                    </div>
+                  </details>
+                ))}
+              </div>
+            </details>
+          );
+        })}
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-4">
+      <Section title="tracker/">{renderTracker()}</Section>
+      <Section title="POCS/">{renderPocs()}</Section>
     </div>
   );
 }
