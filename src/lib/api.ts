@@ -13,11 +13,11 @@ import {
   FileType
 } from '../types/admin';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://veta-api.plaidnox.com';
+const BASE_URL =  'https://veta-api.plaidnox.com';
 const TOKEN_KEY = 'auth_token';
 const DOMAIN_STORAGE_KEY = 'selected_domain';
 const ORG_STORAGE_KEY = 'selected_org';
-const AUTH_SCHEME = process.env.NEXT_PUBLIC_AUTH_SCHEME || 'token';
+const AUTH_SCHEME = 'token';
 
 export function getToken(): string | null {
   if (typeof window === 'undefined') return null;
