@@ -2,18 +2,25 @@
 
 import { useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { setToken, loginUser } from '@/lib/api';
+import { loginUser, setToken, setRefreshToken, setUserEmail } from '@/lib/api';
 import { LoginResponse } from '@/types/login';
+import { OrganizationMembership } from '@/types/auth';
+import { useAuth } from '@/components/auth-provider';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [email, setEmailInput] = useState('');
   const [password, setPassword] = useState('');
   const [token, setTokenInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loginMode, setLoginMode] = useState<'credentials' | 'token'>('credentials');
+  const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
+  const [showOrgSelection, setShowOrgSelection] = useState(false);
+  const [currentLoginData, setCurrentLoginData] = useState<{ email: string; password: string } | null>(null);
+  
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { login } = useAuth();
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,9 +31,14 @@ export default function LoginPage() {
     try {
       const response: LoginResponse = await loginUser(email.trim(), password.trim());
       
-      if (response.success && response.token) {
-        setToken(response.token);
-        // Force redirect to organizations page after successful login
+      if (response.multiTenant && response.memberships) {
+        // User has multiple organization memberships - show selection
+        setMemberships(response.memberships);
+        setCurrentLoginData({ email: email.trim(), password: password.trim() });
+        setShowOrgSelection(true);
+      } else if (response.success && response.token && response.user) {
+        // Single membership - proceed with login
+        login(response.token, response.refreshToken!, response.user);
         router.replace('/organizations');
       } else {
         setError('Login failed. Please check your credentials.');
@@ -39,6 +51,32 @@ export default function LoginPage() {
     }
   };
 
+  const handleOrgSelection = async (membership: OrganizationMembership) => {
+    if (!currentLoginData) return;
+    
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response: LoginResponse = await loginUser(
+        currentLoginData.email, 
+        currentLoginData.password, 
+        membership.org.id
+      );
+      
+      if (response.success && response.token && response.user) {
+        login(response.token, response.refreshToken!, response.user);
+        router.replace('/organizations');
+      } else {
+        setError('Failed to login with selected organization.');
+      }
+    } catch (error) {
+      console.error('Org selection login error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to login with selected organization.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleTokenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token.trim()) return;
@@ -46,7 +84,6 @@ export default function LoginPage() {
     setIsLoading(true);
     try {
       setToken(token.trim());
-      // Force redirect to organizations page after token login
       router.replace('/organizations');
     } catch (error) {
       console.error('Token login error:', error);
@@ -55,6 +92,69 @@ export default function LoginPage() {
       setIsLoading(false);
     }
   };
+
+  const handleBackToLogin = () => {
+    setShowOrgSelection(false);
+    setMemberships([]);
+    setCurrentLoginData(null);
+    setError(null);
+  };
+
+  if (showOrgSelection) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-foreground">Select Organization</h1>
+            <p className="mt-2 text-muted-foreground">
+              You have access to multiple organizations. Please select one to continue.
+            </p>
+          </div>
+
+          {error && (
+            <div className="bg-destructive/10 border border-destructive/30 text-destructive px-4 py-3 rounded-md text-sm font-medium">
+              {error}
+            </div>
+          )}
+
+          <div className="space-y-3">
+            {memberships.map((membership) => (
+              <button
+                key={membership.membershipId}
+                onClick={() => handleOrgSelection(membership)}
+                disabled={isLoading}
+                className="w-full p-4 text-left bg-card border border-border rounded-md hover:bg-accent hover:text-accent-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-medium text-foreground">{membership.org.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Role: <span className="capitalize">{membership.role}</span>
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      User: {membership.user_name}
+                    </p>
+                  </div>
+                  <div className="text-sm text-primary font-medium">
+                    Select →
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={handleBackToLogin}
+            disabled={isLoading}
+            className="w-full bg-secondary text-secondary-foreground py-3 px-4 rounded-md hover:bg-secondary/80 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-background disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+          >
+            ← Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -109,7 +209,7 @@ export default function LoginPage() {
                 type="email"
                 required
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => setEmailInput(e.target.value)}
                 className="w-full px-3 py-2 bg-input border border-border rounded-md text-foreground placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent"
                 placeholder="Enter your email..."
               />

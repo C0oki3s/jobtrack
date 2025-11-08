@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { RouteGuard } from '@/components/route-guard';
 import { 
   getAdminOrganizations, 
   clearToken,
@@ -17,7 +18,7 @@ import {
   UploadFileParams 
 } from '@/types/admin';
 
-export default function AdminPage() {
+function AdminPageContent() {
   const [organizations, setOrganizations] = useState<AdminOrganizationListResponse | null>(null);
   const [selectedOrg, setSelectedOrg] = useState<AdminOrganization | null>(null);
   const [orgFiles, setOrgFiles] = useState<OrgFile[]>([]);
@@ -1131,5 +1132,13 @@ function POCSTree({ files, orgId, onDelete }: POCSTreeProps) {
       <Section title="tracker/">{renderTracker()}</Section>
       <Section title="POCS/">{renderPocs()}</Section>
     </div>
+  );
+}
+
+export default function AdminPage() {
+  return (
+    <RouteGuard requiredRoute="/admin" showUnauthorized={true}>
+      <AdminPageContent />
+    </RouteGuard>
   );
 }
