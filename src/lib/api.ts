@@ -123,6 +123,7 @@ export async function apiFetch<T>(path: string, options: RequestOptions = {}): P
           return apiFetch<T>(path, { ...options, skipRefresh: true });
         } catch (refreshError) {
           // Refresh failed, force logout
+          console.error('Token refresh failed:', refreshError);
           handleAuthFailure();
           throw error;
         } finally {
@@ -205,7 +206,7 @@ export function clearUserEmail() {
 
 // Authentication API functions (New multi-tenant endpoints)
 export async function loginUser(email: string, password: string, orgId?: string): Promise<LoginResponse> {
-  const body: any = { email, password };
+  const body: Record<string, string> = { email, password };
   if (orgId) {
     body.orgId = orgId;
   }
@@ -218,7 +219,7 @@ export async function loginUser(email: string, password: string, orgId?: string)
 }
 
 export async function switchOrganization(orgId?: string, membershipId?: string): Promise<SwitchOrgResponse> {
-  const body: any = {};
+  const body: Record<string, string> = {};
   if (orgId) body.orgId = orgId;
   if (membershipId) body.membershipId = membershipId;
   

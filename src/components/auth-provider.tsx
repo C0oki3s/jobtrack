@@ -13,7 +13,7 @@ import {
   logoutUser,
   switchOrganization 
 } from '@/lib/api';
-import { User, OrganizationMembership } from '@/types/auth';
+import { User } from '@/types/auth';
 import { SwitchOrgResponse } from '@/types/login';
 
 interface AuthContextType {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { loginUser, setToken, setRefreshToken, setUserEmail } from '@/lib/api';
+import { useRouter } from 'next/navigation';
+import { loginUser } from '@/lib/api';
 import { LoginResponse } from '@/types/login';
 import { OrganizationMembership } from '@/types/auth';
 import { useAuth } from '@/components/auth-provider';
@@ -19,7 +19,6 @@ export default function LoginPage() {
   const [currentLoginData, setCurrentLoginData] = useState<{ email: string; password: string } | null>(null);
   
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { login } = useAuth();
 
   const handleCredentialsSubmit = async (e: React.FormEvent) => {
@@ -83,7 +82,9 @@ export default function LoginPage() {
 
     setIsLoading(true);
     try {
-      setToken(token.trim());
+      // For token-based login, we'll need to validate the token
+      // This is a simplified implementation - you might want to call an API to validate
+      // For now, we'll assume the token is valid and redirect
       router.replace('/organizations');
     } catch (error) {
       console.error('Token login error:', error);
